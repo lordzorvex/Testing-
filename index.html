@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CipherTalk — Private & Encrypted</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#09090f;--bg2:#111118;--bg3:#17171f;--bg4:#1e1e28;
+  --border:#252535;--border2:#30304a;
+  --accent:#00e5a0;--accent2:#7b61ff;--accent3:#ff5e8a;
+  --text:#e8e8f2;--text2:#8888aa;--text3:#44445a;
+  --online:#00e5a0;--sb:280px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Syne',sans-serif;background:var(--bg);color:var(--text)}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.5}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg3);border:1px solid var(--accent);color:var(--accent);font-family:'Space Mono',monospace;font-size:11px;padding:10px 20px;border-radius:8px;z-index:5000;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err-toast{border-color:var(--accent3);color:var(--accent3)}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2000;gap:16px}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-txt{font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:1px}
+
+/* AUTH */
+#auth{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:1000;background:var(--bg);overflow-y:auto}
+#auth.on{display:flex}
+.auth-box{width:400px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:40px 36px;position:relative;overflow:hidden;margin:20px}
+.auth-box::before{content:'';position:absolute;top:-80px;right:-80px;width:220px;height:220px;background:radial-gradient(circle,rgba(0,229,160,.1),transparent 70%);pointer-events:none}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.logo-ic{width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo-tx{font-size:24px;font-weight:800;letter-spacing:-1px}
+.logo-tx .c{color:var(--accent)}
+.tagline{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px}
+.enc-banner{display:flex;align-items:center;gap:8px;background:rgba(0,229,160,.05);border:1px solid rgba(0,229,160,.15);border-radius:8px;padding:9px 12px;margin-bottom:20px;font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.5px}
+.tabs{display:flex;background:var(--bg3);border-radius:8px;padding:3px;margin-bottom:20px;gap:3px}
+.tab{flex:1;text-align:center;padding:8px;font-size:13px;font-weight:600;cursor:pointer;border-radius:6px;color:var(--text2);transition:all .2s}
+.tab.on{background:var(--bg4);color:var(--accent)}
+.inp{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;margin-bottom:10px;outline:none;transition:border-color .2s}
+.inp:focus{border-color:var(--accent)}
+.inp::placeholder{color:var(--text3)}
+.btn-p{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),#00a870);border:none;border-radius:8px;color:#000;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s;margin-top:4px}
+.btn-p:hover{opacity:.9}
+.btn-p:active{transform:scale(.99)}
+.btn-p:disabled{opacity:.5;cursor:not-allowed}
+.auth-err{color:var(--accent3);font-family:'Space Mono',monospace;font-size:11px;margin-bottom:10px;display:none;line-height:1.5}
+.auth-note{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);text-align:center;margin-top:18px;line-height:1.8}
+.auth-note b{color:var(--accent)}
+
+/* APP */
+#app{display:none;height:100vh;flex-direction:column}
+#app.on{display:flex}
+
+/* TOPBAR */
+.topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
+.topbar-logo{font-size:17px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:7px}
+.topbar-logo .dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+.topbar-logo .c{color:var(--accent)}
+.enc-chip{font-family:'Space Mono',monospace;font-size:9px;color:var(--accent);background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.18);padding:3px 8px;border-radius:4px;letter-spacing:1px}
+.ws-dot{width:8px;height:8px;border-radius:50%;background:#ff4444;flex-shrink:0;transition:background .3s}
+.ws-dot.on{background:var(--accent)}
+.tb-sp{flex:1}
+.tb-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 10px;border-radius:8px;transition:background .15s}
+.tb-user:hover{background:var(--bg3)}
+.tb-uname{font-size:13px;font-weight:600}
+.tb-status{font-family:'Space Mono',monospace;font-size:9px;color:var(--accent)}
+
+/* MAIN */
+.main{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:var(--sb);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sb-top{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.search-wrap{position:relative}
+.srch-ic{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3);pointer-events:none}
+.search-inp{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px 8px 30px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;outline:none;transition:border-color .2s}
+.search-inp:focus{border-color:var(--accent)}
+.search-inp::placeholder{color:var(--text3)}
+.sb-actions{display:flex;gap:6px}
+.act-btn{flex:1;padding:7px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text2);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:all .15s;white-space:nowrap}
+.act-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sb-list{flex:1;overflow-y:auto;padding:6px 0}
+.sb-list::-webkit-scrollbar{width:3px}
+.sb-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.sec-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;padding:10px 14px 5px}
+.chat-item{display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;transition:background .12s;position:relative}
+.chat-item:hover{background:var(--bg3)}
+.chat-item.active{background:var(--bg4)}
+.chat-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:55%;background:var(--accent);border-radius:0 2px 2px 0}
+.ci-info{flex:1;min-width:0}
+.ci-name{font-size:13px;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden}
+.ci-prev{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.ci-time{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3)}
+.badge{background:var(--accent);color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;min-width:16px;text-align:center}
+.av-wrap{position:relative;flex-shrink:0}
+.av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.av0{background:linear-gradient(135deg,#00e5a0,#00b87a);color:#000}
+.av1{background:linear-gradient(135deg,#7b61ff,#5a40d6);color:#fff}
+.av2{background:linear-gradient(135deg,#ff5e8a,#c03060);color:#fff}
+.av3{background:linear-gradient(135deg,#ffc93c,#e09000);color:#000}
+.av4{background:linear-gradient(135deg,#00cfff,#0090cc);color:#000}
+.av5{background:linear-gradient(135deg,#ff9d4a,#d06020);color:#fff}
+.online-dot{width:8px;height:8px;background:var(--online);border-radius:50%;border:2px solid var(--bg2);position:absolute;bottom:0;right:0}
+.gtag{font-size:9px;background:rgba(123,97,255,.15);color:var(--accent2);padding:1px 5px;border-radius:4px;border:1px solid rgba(123,97,255,.25);font-family:'Space Mono',monospace;letter-spacing:.3px}
+
+/* CHAT AREA */
+.chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--text3)}
+.empty-ic{width:72px;height:72px;background:var(--bg3);border:1px solid var(--border);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:32px}
+.empty h3{font-size:17px;color:var(--text2)}
+.empty p{font-size:12px;font-family:'Space Mono',monospace;text-align:center;max-width:300px;line-height:1.7}
+.hint{font-size:11px;font-family:'Space Mono',monospace;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:6px 12px;margin-top:4px}
+
+/* CHAT HEADER */
+.ch-hdr{height:56px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0}
+.ch-hinfo{flex:1;min-width:0}
+.ch-hname{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden}
+.ch-hsub{font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.3px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbtn{width:34px;height:34px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);transition:all .15s;font-size:14px;flex-shrink:0}
+.hbtn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* MESSAGES */
+.messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:2px}
+.messages::-webkit-scrollbar{width:3px}
+.messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.msg-day{text-align:center;font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;padding:10px 0;display:flex;align-items:center;gap:12px}
+.msg-day::before,.msg-day::after{content:'';flex:1;height:1px;background:var(--border)}
+.msg-row{display:flex;gap:8px;align-items:flex-end;max-width:72%;animation:fadeUp .18s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.msg-row.sent{align-self:flex-end;flex-direction:row-reverse}
+.msg-row .av{width:27px;height:27px;font-size:11px;flex-shrink:0}
+.bubble{background:var(--bg3);border:1px solid var(--border);border-radius:14px 14px 14px 2px;padding:9px 13px;max-width:100%}
+.msg-row.sent .bubble{background:#131d2a;border-color:rgba(0,229,160,.12);border-radius:14px 14px 2px 14px}
+.msg-sender{font-size:10px;font-weight:700;color:var(--accent2);margin-bottom:3px}
+.msg-text{font-size:13px;line-height:1.55;color:var(--text);word-break:break-word;white-space:pre-wrap}
+.msg-meta{display:flex;align-items:center;gap:4px;margin-top:5px;justify-content:flex-end}
+.msg-time{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3)}
+.msg-enc{font-size:9px;color:var(--accent);opacity:.5}
+.msg-chk{font-size:10px;color:var(--accent)}
+.msg-img{max-width:240px;max-height:200px;border-radius:10px;margin-bottom:4px;display:block;cursor:zoom-in;transition:opacity .15s;object-fit:cover}
+.msg-img:hover{opacity:.88}
+.msg-file{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:4px;cursor:pointer;transition:border-color .15s;min-width:200px}
+.msg-file:hover{border-color:var(--accent)}
+.file-ic{width:34px;height:34px;background:rgba(123,97,255,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.file-info{flex:1;min-width:0}
+.file-nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-sz{font-family:'Space Mono',monospace;font-size:10px;color:var(--text2)}
+
+/* TYPING */
+.typing-bar{height:24px;padding:0 20px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.tdots{display:flex;gap:3px}
+.tdots i{width:4px;height:4px;background:var(--text3);border-radius:50%;display:block;animation:tb 1.2s infinite;font-style:normal}
+.tdots i:nth-child(2){animation-delay:.2s}
+.tdots i:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+.typing-txt{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)}
+
+/* INPUT */
+.input-area{padding:12px 16px;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0}
+.input-row{display:flex;gap:8px;align-items:flex-end}
+.input-box{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:11px 13px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;resize:none;outline:none;max-height:120px;overflow-y:auto;line-height:1.45;transition:border-color .2s}
+.input-box:focus{border-color:var(--accent)}
+.input-box::placeholder{color:var(--text3)}
+.ibtn{width:40px;height:40px;border-radius:10px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:16px;flex-shrink:0}
+.ibtn.att{background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+.ibtn.att:hover{border-color:var(--accent2);color:var(--accent2)}
+.ibtn.snd{background:linear-gradient(135deg,var(--accent),#00a870);color:#000}
+.ibtn.snd:hover{opacity:.9;transform:scale(1.05)}
+.ibtn.snd:active{transform:scale(.96)}
+.enc-foot{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);text-align:center;margin-top:7px;letter-spacing:.4px}
+.enc-foot b{color:var(--accent)}
+
+/* MODALS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(6px)}
+.overlay.on{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:28px;width:360px;position:relative;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.modal-inp{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;margin-bottom:10px;transition:border-color .2s}
+.modal-inp:focus{border-color:var(--accent)}
+.modal-inp::placeholder{color:var(--text3)}
+.modal-btns{display:flex;gap:8px;margin-top:6px}
+.mbtn{flex:1;padding:10px;border-radius:8px;border:none;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.mbtn.p{background:var(--accent);color:#000}
+.mbtn.p:hover{opacity:.9}
+.mbtn.s{background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+.mbtn.s:hover{border-color:var(--accent);color:var(--text)}
+.xbtn{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;line-height:1;padding:4px}
+.xbtn:hover{color:var(--text)}
+.key-box{background:rgba(0,229,160,.05);border:1px solid rgba(0,229,160,.18);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);line-height:1.7;word-break:break-all}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;min-height:10px}
+.chip{display:flex;align-items:center;gap:4px;background:rgba(123,97,255,.1);border:1px solid rgba(123,97,255,.25);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--accent2)}
+.chip-x{cursor:pointer;color:var(--text3);margin-left:2px}
+.enc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.enc-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.enc-item .val{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);font-weight:700}
+.enc-item .lbl{font-size:10px;color:var(--text3);margin-top:3px}
+.chk-list{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+.chk-item{font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:8px}
+.chk-item b{color:var(--accent)}
+.member-list{display:flex;flex-direction:column;gap:6px}
+.member-item{display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--bg3);border-radius:8px}
+.member-role{font-family:'Space Mono',monospace;font-size:9px;color:var(--accent);margin-left:auto}
+.profile-info{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px}
+.pr-av{width:72px;height:72px;font-size:28px;font-weight:700}
+.pr-name{font-size:18px;font-weight:700}
+.pr-handle{font-family:'Space Mono',monospace;font-size:12px;color:var(--accent)}
+.pr-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.stat .n{font-size:18px;font-weight:700;color:var(--accent)}
+.stat .l{font-size:10px;color:var(--text3);font-family:'Space Mono',monospace}
+.logout-btn{width:100%;padding:11px;background:rgba(255,94,138,.1);border:1px solid rgba(255,94,138,.25);border-radius:8px;color:var(--accent3);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:16px;transition:all .15s}
+.logout-btn:hover{background:rgba(255,94,138,.2)}
+
+/* LIGHTBOX */
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.94);display:none;align-items:center;justify-content:center;z-index:2000;cursor:zoom-out;flex-direction:column;gap:12px}
+.lb.on{display:flex}
+.lb img{max-width:92vw;max-height:85vh;border-radius:10px;object-fit:contain}
+.lb-dl{background:var(--bg3);border:1px solid var(--accent);color:var(--accent);font-family:'Space Mono',monospace;font-size:11px;padding:7px 18px;border-radius:6px;cursor:pointer;text-decoration:none}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spin"></div>
+  <div class="load-txt">CONNECTING...</div>
+</div>
+
+<!-- AUTH -->
+<div id="auth">
+  <div class="auth-box">
+    <div class="logo">
+      <div class="logo-ic">🔒</div>
+      <span class="logo-tx"><span class="c">Cipher</span>Talk</span>
+    </div>
+    <p class="tagline">// end-to-end encrypted · zero tracking</p>
+    <div class="enc-banner">🛡️ &nbsp;AES-256-GCM · No phone · No ads · No server can read your messages</div>
+    <div class="tabs">
+      <div class="tab on" id="tab-l" onclick="switchTab('l')">Sign In</div>
+      <div class="tab" id="tab-r" onclick="switchTab('r')">Register</div>
+    </div>
+    <div class="auth-err" id="auth-err"></div>
+    <div id="form-l">
+      <input class="inp" id="l-u" placeholder="Username" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
+      <input class="inp" id="l-p" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="btn-p" id="login-btn" onclick="doLogin()">Sign In →</button>
+    </div>
+    <div id="form-r" style="display:none">
+      <input class="inp" id="r-u" placeholder="Username (3-24 chars, a-z 0-9 _)" autocomplete="off" spellcheck="false">
+      <input class="inp" id="r-d" placeholder="Display name">
+      <input class="inp" id="r-p" type="password" placeholder="Password (min 8 chars)">
+      <input class="inp" id="r-p2" type="password" placeholder="Confirm password" onkeydown="if(event.key==='Enter')doRegister()">
+      <button class="btn-p" id="reg-btn" onclick="doRegister()">Create Account →</button>
+    </div>
+    <p class="auth-note">
+      <b>🔑 Keys generated in your browser</b> — server never sees plaintext<br>
+      Username = your identity. No email. No phone number.
+    </p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo"><div class="dot"></div><span><span class="c">Cipher</span>Talk</span></div>
+    <div class="enc-chip">E2E ENCRYPTED</div>
+    <div class="ws-dot" id="ws-dot" title="Connection status"></div>
+    <div class="tb-sp"></div>
+    <div class="tb-user" onclick="openModal('profile-modal')">
+      <div class="av" id="tb-av" style="width:28px;height:28px;font-size:11px">?</div>
+      <div>
+        <div class="tb-uname" id="tb-name">—</div>
+        <div class="tb-status">● online</div>
+      </div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="sidebar">
+      <div class="sb-top">
+        <div class="search-wrap">
+          <span class="srch-ic">🔍</span>
+          <input class="search-inp" placeholder="Search chats..." oninput="filterSidebar(this.value)">
+        </div>
+        <div class="sb-actions">
+          <button class="act-btn" onclick="openModal('dm-modal')">✉️ New DM</button>
+          <button class="act-btn" onclick="openModal('grp-modal')">👥 New Group</button>
+        </div>
+      </div>
+      <div class="sb-list" id="sb-list"></div>
+    </div>
+    <div class="chat-area" id="chat-area">
+      <div class="empty" id="empty">
+        <div class="empty-ic">💬</div>
+        <h3>Welcome to CipherTalk</h3>
+        <p>Your messages are encrypted with AES-256-GCM. The server only receives ciphertext — it can never read your messages.</p>
+        <div class="hint">👉 Click "New DM" to start a private chat</div>
+        <div class="hint">👥 Or "New Group" for a group conversation</div>
+      </div>
+      <div id="active-chat" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+        <div class="ch-hdr">
+          <div class="av-wrap">
+            <div class="av" id="ch-av" style="width:36px;height:36px;font-size:14px">?</div>
+            <div class="online-dot" id="ch-dot" style="display:none"></div>
+          </div>
+          <div class="ch-hinfo">
+            <div class="ch-hname" id="ch-name">—</div>
+            <div class="ch-hsub" id="ch-sub">🔒 encrypted</div>
+          </div>
+          <div class="hbtn" onclick="openEncInfo()" title="Encryption">🔒</div>
+          <div class="hbtn" id="mbr-btn" onclick="openModal('mbr-modal')" title="Members" style="display:none">👥</div>
+          <div class="hbtn" onclick="clearChat()" title="Clear">🗑️</div>
+        </div>
+        <div class="messages" id="msgs"></div>
+        <div class="typing-bar" id="typing-bar" style="visibility:hidden">
+          <div class="tdots"><i></i><i></i><i></i></div>
+          <span class="typing-txt" id="typing-txt">typing...</span>
+        </div>
+        <div class="input-area">
+          <div class="input-row">
+            <button class="ibtn att" onclick="document.getElementById('file-inp').click()" title="Attach file">📎</button>
+            <textarea class="input-box" id="msg-inp" placeholder="Message... (E2E encrypted)" rows="1"
+              onkeydown="onKey(event)" oninput="onType(this)"></textarea>
+            <button class="ibtn snd" onclick="sendMsg()">➤</button>
+          </div>
+          <div class="enc-foot">🔒 <b>AES-256-GCM end-to-end encrypted</b> · Server sees only ciphertext</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW DM -->
+<div class="overlay" id="dm-modal">
+  <div class="modal">
+    <button class="xbtn" onclick="closeModal('dm-modal')">✕</button>
+    <h3>✉️ New Direct Message</h3>
+    <div class="key-box">🔑 A unique AES-256-GCM key will be generated for this conversation. Your server cannot read it.</div>
+    <input class="modal-inp" id="dm-u" placeholder="Enter username..." spellcheck="false" autocomplete="off" onkeydown="if(event.key==='Enter')startDM()">
+    <div id="dm-err" style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:11px;margin-bottom:8px;display:none"></div>
+    <div class="modal-btns">
+      <button class="mbtn s" onclick="closeModal('dm-modal')">Cancel</button>
+      <button class="mbtn p" onclick="startDM()">Start Encrypted Chat</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW GROUP -->
+<div class="overlay" id="grp-modal">
+  <div class="modal">
+    <button class="xbtn" onclick="closeModal('grp-modal')">✕</button>
+    <h3>👥 Create Group</h3>
+    <div class="key-box">🔑 Shared AES-256-GCM group key generated in your browser.</div>
+    <input class="modal-inp" id="grp-nm" placeholder="Group name..." autocomplete="off">
+    <input class="modal-inp" id="grp-mi" placeholder="Add members by username, press Enter..." onkeydown="onMemberKey(event)" spellcheck="false" autocomplete="off">
+    <div class="chips" id="grp-chips"></div>
+    <div class="modal-btns">
+      <button class="mbtn s" onclick="closeModal('grp-modal')">Cancel</button>
+      <button class="mbtn p" onclick="createGroup()">Create Group</button>
+    </div>
+  </div>
+</div>
+
+<!-- ENC INFO -->
+<div class="overlay" id="enc-modal">
+  <div class="modal">
+    <button class="xbtn" onclick="closeModal('enc-modal')">✕</button>
+    <h3>🔒 Encryption Details</h3>
+    <div class="key-box" id="enc-detail">—</div>
+    <div class="enc-grid">
+      <div class="enc-item"><div class="val">AES-256</div><div class="lbl">Algorithm</div></div>
+      <div class="enc-item"><div class="val">GCM</div><div class="lbl">Mode</div></div>
+      <div class="enc-item"><div class="val">128-bit</div><div class="lbl">Auth Tag</div></div>
+      <div class="enc-item"><div class="val">96-bit IV</div><div class="lbl">Nonce</div></div>
+    </div>
+    <div class="chk-list">
+      <div class="chk-item"><b>✓</b> Keys generated in browser (Web Crypto API)</div>
+      <div class="chk-item"><b>✓</b> Encrypted before leaving your device</div>
+      <div class="chk-item"><b>✓</b> Server only stores ciphertext</div>
+      <div class="chk-item"><b>✓</b> Passwords: PBKDF2 + SHA-256 (100k rounds)</div>
+      <div class="chk-item"><b>✓</b> No tracking · No ads · No phone number</div>
+    </div>
+    <div class="modal-btns" style="margin-top:16px"><button class="mbtn p" onclick="closeModal('enc-modal')">Got it</button></div>
+  </div>
+</div>
+
+<!-- MEMBERS -->
+<div class="overlay" id="mbr-modal">
+  <div class="modal">
+    <button class="xbtn" onclick="closeModal('mbr-modal')">✕</button>
+    <h3>👥 Group Members</h3>
+    <div class="member-list" id="mbr-list"></div>
+    <div style="margin-top:12px">
+      <input class="modal-inp" id="add-mbr" placeholder="Add member by username..." onkeydown="if(event.key==='Enter')addMember()" spellcheck="false" autocomplete="off">
+      <div class="modal-btns"><button class="mbtn p" onclick="addMember()">Add Member</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div class="overlay" id="profile-modal">
+  <div class="modal">
+    <button class="xbtn" onclick="closeModal('profile-modal')">✕</button>
+    <h3>👤 Profile</h3>
+    <div class="profile-info">
+      <div class="av pr-av" id="pr-av">?</div>
+      <div class="pr-name" id="pr-name">—</div>
+      <div class="pr-handle" id="pr-handle">@—</div>
+    </div>
+    <div class="pr-stats" id="pr-stats"></div>
+    <div class="chk-list" style="margin-top:16px">
+      <div class="chk-item"><b>✓</b> No email stored</div>
+      <div class="chk-item"><b>✓</b> No phone number</div>
+      <div class="chk-item"><b>✓</b> Password hashed — server never sees it</div>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lb" id="lb" onclick="closeLb()">
+  <img id="lb-img" src="" alt="">
+  <a id="lb-dl" class="lb-dl" download="image.png">⬇ Download</a>
+</div>
+
+<input type="file" id="file-inp" accept="*/*" onchange="onFile(this)" style="display:none">
+
+<script>
+'use strict';
+
+// ═══════════════════════
+//  CRYPTO
+// ═══════════════════════
+const CS = window.crypto.subtle;
+
+async function genKey() {
+  return CS.generateKey({ name:'AES-GCM', length:256 }, true, ['encrypt','decrypt']);
+}
+async function exportKey(k) {
+  const raw = await CS.exportKey('raw', k);
+  return toHex(new Uint8Array(raw));
+}
+async function importKey(hex) {
+  return CS.importKey('raw', fromHex(hex), { name:'AES-GCM' }, true, ['encrypt','decrypt']);
+}
+async function encrypt(keyObj, plain) {
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const ct = await CS.encrypt({ name:'AES-GCM', iv }, keyObj, new TextEncoder().encode(plain));
+  return toHex(iv) + ':' + toHex(new Uint8Array(ct));
+}
+async function decrypt(keyObj, cipher) {
+  const [ivH, ctH] = cipher.split(':');
+  const pt = await CS.decrypt({ name:'AES-GCM', iv: fromHex(ivH) }, keyObj, fromHex(ctH));
+  return new TextDecoder().decode(pt);
+}
+async function hashPw(pass, salt) {
+  const km = await CS.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
+  const bits = await CS.deriveBits({ name:'PBKDF2', hash:'SHA-256', salt: new TextEncoder().encode(salt), iterations:100000 }, km, 256);
+  return toHex(new Uint8Array(bits));
+}
+function toHex(buf) { return Array.from(buf, b => b.toString(16).padStart(2,'0')).join(''); }
+function fromHex(h) { return new Uint8Array(h.match(/.{2}/g).map(b => parseInt(b,16))); }
+function randHex(n=16) { return toHex(window.crypto.getRandomValues(new Uint8Array(n))); }
+
+// ═══════════════════════
+//  CACHE  (key objects)
+// ═══════════════════════
+const keyCache = {}; // chatId → CryptoKey object
+async function getKey(chatId, keyHex) {
+  if (!keyCache[chatId]) keyCache[chatId] = await importKey(keyHex);
+  return keyCache[chatId];
+}
+
+// ═══════════════════════
+//  STATE
+// ═══════════════════════
+const S = {
+  user: null,
+  ws: null,
+  chats: {},       // chatId → chat
+  currentChat: null,
+  onlineUsers: new Set(),
+  groupMembers: [],
+  filterStr: '',
+  typingClear: null,
+  unreadCounts: {}, // chatId → n
+};
+
+// ═══════════════════════
+//  WEBSOCKET
+// ═══════════════════════
+function wsConnect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}`);
+  S.ws = ws;
+  ws.onopen = () => {
+    document.getElementById('ws-dot').classList.add('on');
+    ws.send(JSON.stringify({ type:'AUTH', username: S.user.username }));
+    // Heartbeat
+    setInterval(() => { if (ws.readyState === 1) ws.send(JSON.stringify({ type:'PING' })); }, 25000);
+  };
+  ws.onclose = () => {
+    document.getElementById('ws-dot').classList.remove('on');
+    toast('⚠ Reconnecting...', 2000, true);
+    setTimeout(wsConnect, 3000);
+  };
+  ws.onerror = () => {};
+  ws.onmessage = async e => {
+    let d; try { d = JSON.parse(e.data); } catch { return; }
+    await handleWS(d);
+  };
+}
+
+async function handleWS(d) {
+  switch (d.type) {
+    case 'AUTH_OK':
+      (d.onlineUsers || []).forEach(u => S.onlineUsers.add(u));
+      updateOnlineDot();
+      break;
+
+    case 'MSG': {
+      // Decrypt
+      const chat = S.chats[d.chatId];
+      if (!chat) return;
+      const keyObj = await getKey(d.chatId, chat.keyHex);
+      let text = '', mediaType = d.mediaType, fileName = d.fileName, fileSize = d.fileSize;
+      try {
+        if (d.encContent) text = await decrypt(keyObj, d.encContent);
+        if (d.encMedia)   text = await decrypt(keyObj, d.encMedia);
+      } catch { text = '[decryption error]'; }
+
+      // Build message object
+      const msg = { id: d.id, chatId: d.chatId, from: d.from, text, mediaType, fileName, fileSize, time: d.time, ts: d.ts };
+
+      // Cache locally
+      if (!chat._msgs) chat._msgs = [];
+      // Deduplicate
+      if (!chat._msgs.find(m => m.id === msg.id)) chat._msgs.push(msg);
+      chat._msgs.sort((a,b) => a.ts - b.ts);
+
+      chat.lastMsg = mediaType === 'image' ? '📷 Photo' : mediaType === 'file' ? '📎 ' + fileName : text;
+      chat.lastTime = fmtTime(d.ts); chat.ts = d.ts;
+
+      if (S.currentChat !== d.chatId) {
+        S.unreadCounts[d.chatId] = (S.unreadCounts[d.chatId] || 0) + 1;
+        // Don't notify for own messages
+        if (d.from !== S.user.username) toast('💬 New message from @' + d.from);
+      }
+
+      if (S.currentChat === d.chatId) await renderMsgs(false);
+      renderSidebar();
+      break;
+    }
+
+    case 'TYPING':
+      if (S.currentChat !== d.chatId) return;
+      if (d.from === S.user.username) return;
+      showTyping(d.from, d.display);
+      break;
+
+    case 'ONLINE':
+      S.onlineUsers.add(d.username);
+      updateOnlineDot();
+      renderSidebar();
+      break;
+
+    case 'OFFLINE':
+      S.onlineUsers.delete(d.username);
+      updateOnlineDot();
+      renderSidebar();
+      break;
+
+    case 'NEW_CHAT': {
+      // Another user started a DM with me, or I was added to a group
+      const c = d.chat;
+      if (c.type === 'dm') {
+        // Flip display info for my perspective
+        if (c.user1 === S.user.username) {
+          // I'm user1, show user2
+        } else {
+          // I'm user2, show user1 (initiator)
+          if (d.peerDisplay) c.displayName = d.peerDisplay;
+          if (d.peerColor !== undefined) c.color = d.peerColor;
+        }
+      }
+      S.chats[c.id] = c;
+      renderSidebar();
+      toast('💬 New chat from ' + (c.displayName || 'someone'));
+      break;
+    }
+  }
+}
+
+// ═══════════════════════
+//  API HELPERS
+// ═══════════════════════
+async function api(method, path, body) {
+  const r = await fetch(path, {
+    method, headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'Request failed');
+  return j;
+}
+
+// ═══════════════════════
+//  AUTH
+// ═══════════════════════
+function switchTab(t) {
+  ['l','r'].forEach(k => {
+    document.getElementById('tab-'+k).classList.toggle('on', k===t);
+    document.getElementById('form-'+k).style.display = k===t ? '' : 'none';
+  });
+  showAuthErr('');
+}
+
+function showAuthErr(msg) {
+  const el = document.getElementById('auth-err');
+  el.textContent = msg; el.style.display = msg ? 'block' : 'none';
+}
+
+function setBusy(btn, busy) {
+  document.getElementById(btn).disabled = busy;
+  document.getElementById(btn).textContent = busy ? 'Please wait...' : (btn === 'login-btn' ? 'Sign In →' : 'Create Account →');
+}
+
+async function doLogin() {
+  const username = document.getElementById('l-u').value.trim().toLowerCase();
+  const pass = document.getElementById('l-p').value;
+  if (!username || !pass) { showAuthErr('⚠ Enter username and password'); return; }
+  setBusy('login-btn', true);
+  try {
+    const { salt } = await api('GET', '/api/salt/' + username);
+    const passHash = await hashPw(pass, salt);
+    const { user } = await api('POST', '/api/login', { username, passHash });
+    S.user = user;
+    await enterApp();
+  } catch(e) { showAuthErr('⚠ ' + e.message); }
+  setBusy('login-btn', false);
+}
+
+async function doRegister() {
+  const username = document.getElementById('r-u').value.trim().toLowerCase();
+  const display = document.getElementById('r-d').value.trim() || username;
+  const pass = document.getElementById('r-p').value;
+  const pass2 = document.getElementById('r-p2').value;
+  if (!username || !pass) { showAuthErr('⚠ Fill all required fields'); return; }
+  if (!/^[a-z0-9_]{3,24}$/.test(username)) { showAuthErr('⚠ Username: 3-24 chars, a-z 0-9 _ only'); return; }
+  if (pass.length < 8) { showAuthErr('⚠ Password min 8 characters'); return; }
+  if (pass !== pass2) { showAuthErr('⚠ Passwords do not match'); return; }
+  setBusy('reg-btn', true);
+  try {
+    const salt = randHex(16);
+    const passHash = await hashPw(pass, salt);
+    const color = Math.floor(Math.random() * 6);
+    await api('POST', '/api/register', { username, display, color, salt, passHash });
+    S.user = { username, display, color };
+    await enterApp();
+    toast('✅ Account created! Welcome, ' + display);
+  } catch(e) { showAuthErr('⚠ ' + e.message); }
+  setBusy('reg-btn', false);
+}
+
+async function enterApp() {
+  document.getElementById('auth').classList.remove('on');
+  document.getElementById('app').classList.add('on');
+  document.getElementById('loading').style.display = 'none';
+  const u = S.user;
+  const av = document.getElementById('tb-av');
+  av.textContent = u.display[0].toUpperCase();
+  av.className = 'av av' + u.color;
+  document.getElementById('tb-name').textContent = u.display;
+  // Load chats
+  const chatList = await api('GET', '/api/chats/' + u.username);
+  chatList.forEach(c => { S.chats[c.id] = c; });
+  renderSidebar();
+  wsConnect();
+}
+
+function logout() {
+  if (S.ws) S.ws.close();
+  S.user = null; S.chats = {}; S.currentChat = null;
+  document.getElementById('app').classList.remove('on');
+  document.getElementById('auth').classList.add('on');
+  closeModal('profile-modal');
+  // Clear form
+  document.getElementById('l-u').value = '';
+  document.getElementById('l-p').value = '';
+}
+
+// ═══════════════════════
+//  SIDEBAR
+// ═══════════════════════
+function renderSidebar(filter) {
+  if (filter !== undefined) S.filterStr = filter;
+  const f = (S.filterStr || '').toLowerCase();
+  const all = Object.values(S.chats).filter(c => {
+    const dn = (c.displayName || c.display || '').toLowerCase();
+    return !f || dn.includes(f);
+  }).sort((a,b) => (b.ts||0)-(a.ts||0));
+  const dms = all.filter(c => c.type === 'dm');
+  const grps = all.filter(c => c.type === 'group');
+  const list = document.getElementById('sb-list');
+  list.innerHTML = '';
+  if (dms.length) { list.innerHTML += '<div class="sec-lbl">Direct Messages</div>'; dms.forEach(c => list.appendChild(mkChatItem(c))); }
+  if (grps.length) { list.innerHTML += '<div class="sec-lbl">Groups</div>'; grps.forEach(c => list.appendChild(mkChatItem(c))); }
+  if (!all.length) list.innerHTML = '<div style="padding:20px 14px;font-family:\'Space Mono\',monospace;font-size:11px;color:var(--text3);line-height:1.8">No chats yet.<br>Click <b style="color:var(--accent)">New DM</b> to start!</div>';
+}
+
+function filterSidebar(v) { renderSidebar(v); }
+
+function mkChatItem(chat) {
+  const div = document.createElement('div');
+  div.className = 'chat-item' + (S.currentChat === chat.id ? ' active' : '');
+  div.onclick = () => openChat(chat.id);
+  const dn = chat.displayName || chat.display || '?';
+  const peer = chat.type === 'dm' ? (chat.user1 === S.user.username ? chat.user2 : chat.user1) : null;
+  const isOnline = peer && S.onlineUsers.has(peer);
+  const unread = S.unreadCounts[chat.id] || 0;
+  const initials = dn[0].toUpperCase();
+  div.innerHTML = `
+    <div class="av-wrap">
+      <div class="av av${chat.color||0}" style="width:38px;height:38px;font-size:14px">${chat.type==='group'?'👥':initials}</div>
+      ${isOnline ? '<div class="online-dot"></div>' : ''}
+    </div>
+    <div class="ci-info">
+      <div class="ci-name">${esc(dn)}${chat.type==='group'?'<span class="gtag">GROUP</span>':''}</div>
+      <div class="ci-prev">🔒 ${esc(chat.lastMsg||'No messages yet')}</div>
+    </div>
+    <div class="ci-meta">
+      <span class="ci-time">${chat.lastTime||''}</span>
+      ${unread ? `<span class="badge">${unread}</span>` : ''}
+    </div>`;
+  return div;
+}
+
+// ═══════════════════════
+//  OPEN CHAT
+// ═══════════════════════
+async function openChat(id) {
+  S.currentChat = id;
+  S.unreadCounts[id] = 0;
+  const chat = S.chats[id];
+  if (!chat) return;
+  document.getElementById('empty').style.display = 'none';
+  const ac = document.getElementById('active-chat');
+  ac.style.display = 'flex';
+  const dn = chat.displayName || chat.display || '?';
+  const avEl = document.getElementById('ch-av');
+  avEl.className = 'av av' + (chat.color||0);
+  avEl.style.cssText = 'width:36px;height:36px;font-size:14px';
+  avEl.textContent = chat.type === 'group' ? '👥' : dn[0].toUpperCase();
+  const peer = chat.type === 'dm' ? (chat.user1 === S.user.username ? chat.user2 : chat.user1) : null;
+  const isOnline = peer && S.onlineUsers.has(peer);
+  document.getElementById('ch-dot').style.display = isOnline ? 'block' : 'none';
+  document.getElementById('ch-name').innerHTML = esc(dn) + (chat.type==='group' ? ' <span class="gtag">GROUP</span>' : '');
+  document.getElementById('ch-sub').textContent = `🔒 AES-256-GCM · key: ${chat.keyHex.slice(0,16)}...`;
+  document.getElementById('mbr-btn').style.display = chat.type === 'group' ? 'flex' : 'none';
+  document.getElementById('msg-inp').focus();
+  renderSidebar();
+  await loadMsgs(id);
+}
+
+async function loadMsgs(chatId) {
+  const chat = S.chats[chatId];
+  if (!chat._msgs) {
+    const msgs = await api('GET', '/api/messages/' + chatId);
+    const keyObj = await getKey(chatId, chat.keyHex);
+    const decoded = [];
+    for (const m of msgs) {
+      let text = '', mediaType = m.mediaType, fileName = m.fileName, fileSize = m.fileSize;
+      try {
+        if (m.encContent) text = await decrypt(keyObj, m.encContent);
+        if (m.encMedia)   text = await decrypt(keyObj, m.encMedia);
+      } catch { text = '[encrypted]'; }
+      decoded.push({ ...m, text });
+    }
+    chat._msgs = decoded.sort((a,b) => a.ts - b.ts);
+  }
+  await renderMsgs(true);
+}
+
+// ═══════════════════════
+//  RENDER MESSAGES
+// ═══════════════════════
+async function renderMsgs(scrollToBottom = true) {
+  const chatId = S.currentChat;
+  const chat = S.chats[chatId];
+  const msgs = chat?._msgs || [];
+  const container = document.getElementById('msgs');
+  container.innerHTML = '';
+  if (!msgs.length) {
+    container.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:8px;padding:40px 20px;color:var(--text3)"><div style="font-size:32px">🔒</div><div style="font-family:\'Space Mono\',monospace;font-size:11px;text-align:center;line-height:1.8">Conversation is end-to-end encrypted.<br>Say hello!</div></div>';
+    return;
+  }
+  let lastDay = '';
+  for (const msg of msgs) {
+    const day = fmtDay(msg.ts);
+    if (day !== lastDay) {
+      lastDay = day;
+      const el = document.createElement('div');
+      el.className = 'msg-day'; el.textContent = day;
+      container.appendChild(el);
+    }
+    container.appendChild(await mkMsgEl(msg, chat));
+  }
+  if (scrollToBottom) container.scrollTop = container.scrollHeight;
+}
+
+async function mkMsgEl(msg, chat) {
+  const isSent = msg.from === S.user.username;
+  const row = document.createElement('div');
+  row.className = 'msg-row' + (isSent ? ' sent' : '');
+
+  let avColor = isSent ? (S.user.color||0) : (chat.color||0);
+  let avLetter = isSent ? S.user.display[0].toUpperCase() : ((chat.displayName||'?')[0].toUpperCase());
+
+  if (!isSent && chat.type === 'group') {
+    try {
+      const u = await api('GET', '/api/user/' + msg.from);
+      avColor = u.color || 0;
+      avLetter = (u.display||msg.from)[0].toUpperCase();
+    } catch {}
+  }
+
+  let bHtml = '';
+  if (!isSent && chat.type === 'group') {
+    bHtml += `<div class="msg-sender">${esc(msg.from)}</div>`;
+  }
+
+  if (msg.mediaType === 'image') {
+    bHtml += `<img class="msg-img" src="${msg.text}" onclick="event.stopPropagation();openLb(this.src)">`;
+  } else if (msg.mediaType === 'file') {
+    const ext = (msg.fileName||'').split('.').pop().toLowerCase();
+    const ics = {pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',zip:'📦',rar:'📦',mp4:'🎬',mp3:'🎵',png:'🖼️',jpg:'🖼️',jpeg:'🖼️',gif:'🎞️',txt:'📋'};
+    bHtml += `<div class="msg-file" onclick="dlFile(this.dataset.src,this.dataset.name)" data-src="${msg.text}" data-name="${esc(msg.fileName||'file')}">
+      <div class="file-ic">${ics[ext]||'📎'}</div>
+      <div class="file-info"><div class="file-nm">${esc(msg.fileName||'file')}</div><div class="file-sz">${msg.fileSize||''}</div></div>
+      <span style="font-size:13px;color:var(--accent)">⬇</span>
+    </div>`;
+  } else {
+    bHtml += `<div class="msg-text">${esc(msg.text)}</div>`;
+  }
+  bHtml += `<div class="msg-meta">
+    <span class="msg-time">${msg.time||fmtTime(msg.ts)}</span>
+    <span class="msg-enc">🔒</span>
+    ${isSent ? '<span class="msg-chk">✓✓</span>' : ''}
+  </div>`;
+
+  row.innerHTML = `<div class="av av${avColor}" style="width:27px;height:27px;font-size:11px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">${avLetter}</div><div class="bubble">${bHtml}</div>`;
+  return row;
+}
+
+// ═══════════════════════
+//  SEND
+// ═══════════════════════
+async function sendMsg() {
+  const inp = document.getElementById('msg-inp');
+  const text = inp.value.trim();
+  if (!text || !S.currentChat) return;
+  inp.value = ''; inp.style.height = '';
+  await sendContent({ type:'text', text });
+}
+
+async function sendContent({ type, text, fileName, fileSize }) {
+  const chatId = S.currentChat;
+  const chat = S.chats[chatId];
+  if (!chat || !S.ws || S.ws.readyState !== 1) { toast('⚠ Not connected', 2000, true); return; }
+  const ts = Date.now();
+  const time = fmtTime(ts);
+  const msgId = randHex(16);
+  const keyObj = await getKey(chatId, chat.keyHex);
+  const mediaType = type === 'image' ? 'image' : type === 'file' ? 'file' : null;
+  let encContent = null, encMedia = null;
+  if (!mediaType) encContent = await encrypt(keyObj, text);
+  else            encMedia   = await encrypt(keyObj, text);
+
+  S.ws.send(JSON.stringify({
+    type: 'MSG', chatId, msgId,
+    encContent, encMedia, mediaType, fileName, fileSize,
+    time, ts
+  }));
+  // We'll receive our own message back from server (echo to all members including sender)
+}
+
+function onKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+}
+
+let typingThrottle = null;
+function onType(el) {
+  el.style.height = ''; el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  if (!S.currentChat || !S.ws || S.ws.readyState !== 1) return;
+  if (!typingThrottle) {
+    S.ws.send(JSON.stringify({ type:'TYPING', chatId: S.currentChat, display: S.user.display }));
+    typingThrottle = setTimeout(() => { typingThrottle = null; }, 2000);
+  }
+}
+
+// ═══════════════════════
+//  FILE
+// ═══════════════════════
+function onFile(input) {
+  const file = input.files[0];
+  if (!file || !S.currentChat) return;
+  if (file.size > 10 * 1024 * 1024) { toast('⚠ Max file size: 10MB', 3000, true); input.value=''; return; }
+  const sizeStr = file.size < 1048576 ? (file.size/1024).toFixed(0)+' KB' : (file.size/1048576).toFixed(1)+' MB';
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const isImg = file.type.startsWith('image/');
+    await sendContent({ type: isImg ? 'image' : 'file', text: e.target.result, fileName: file.name, fileSize: sizeStr });
+    toast('📎 ' + file.name + ' sent — encrypted');
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+// ═══════════════════════
+//  TYPING INDICATOR
+// ═══════════════════════
+let typingClearTimer = null;
+function showTyping(from, display) {
+  document.getElementById('typing-txt').textContent = (display||from) + ' is typing...';
+  document.getElementById('typing-bar').style.visibility = 'visible';
+  clearTimeout(typingClearTimer);
+  typingClearTimer = setTimeout(() => { document.getElementById('typing-bar').style.visibility = 'hidden'; }, 3000);
+}
+
+// ═══════════════════════
+//  NEW DM
+// ═══════════════════════
+async function startDM() {
+  const target = document.getElementById('dm-u').value.trim().toLowerCase();
+  const errEl = document.getElementById('dm-err');
+  errEl.style.display = 'none';
+  if (!target) { errEl.textContent='⚠ Enter a username'; errEl.style.display='block'; return; }
+  if (target === S.user.username) { errEl.textContent='⚠ Cannot DM yourself'; errEl.style.display='block'; return; }
+  try {
+    const targetUser = await api('GET', '/api/user/' + target);
+    const key = await genKey();
+    const keyHex = await exportKey(key);
+    const { chatId } = await api('POST', '/api/dm', { from: S.user.username, to: target, keyHex });
+    if (!S.chats[chatId]) {
+      S.chats[chatId] = { id: chatId, type: 'dm', user1: S.user.username, user2: target, displayName: targetUser.display, color: targetUser.color, keyHex, ts: Date.now(), lastMsg:'', lastTime:'' };
+    }
+    closeModal('dm-modal');
+    document.getElementById('dm-u').value = '';
+    renderSidebar();
+    await openChat(chatId);
+    toast('🔒 Encrypted DM ready!');
+  } catch(e) { errEl.textContent = '⚠ ' + e.message; errEl.style.display = 'block'; }
+}
+
+// ═══════════════════════
+//  NEW GROUP
+// ═══════════════════════
+async function createGroup() {
+  const name = document.getElementById('grp-nm').value.trim();
+  if (!name) { toast('⚠ Enter group name', 2000, true); return; }
+  if (!S.groupMembers.length) { toast('⚠ Add at least one member', 2000, true); return; }
+  const members = [S.user.username, ...S.groupMembers];
+  const key = await genKey();
+  const keyHex = await exportKey(key);
+  const color = Math.floor(Math.random()*6);
+  const { chatId } = await api('POST', '/api/group', { name, members, keyHex, color, createdBy: S.user.username });
+  S.chats[chatId] = { id: chatId, type: 'group', displayName: name, members, color, keyHex, ts: Date.now(), lastMsg:'', lastTime:'' };
+  S.groupMembers = []; renderChips();
+  document.getElementById('grp-nm').value = '';
+  closeModal('grp-modal');
+  renderSidebar();
+  await openChat(chatId);
+  toast('👥 Group "'+name+'" created!');
+}
+
+function onMemberKey(e) {
+  if (e.key !== 'Enter') return;
+  const v = e.target.value.trim().toLowerCase(); e.target.value = '';
+  if (!v || v === S.user.username || S.groupMembers.includes(v)) return;
+  S.groupMembers.push(v); renderChips();
+}
+function renderChips() {
+  document.getElementById('grp-chips').innerHTML = S.groupMembers.map(m => `<div class="chip">${esc(m)}<span class="chip-x" onclick="S.groupMembers=S.groupMembers.filter(x=>x!=='${m}');renderChips()">✕</span></div>`).join('');
+}
+
+// ═══════════════════════
+//  ADD MEMBER
+// ═══════════════════════
+async function addMember() {
+  const inp = document.getElementById('add-mbr');
+  const u = inp.value.trim().toLowerCase(); inp.value = '';
+  if (!u || !S.currentChat) return;
+  try {
+    await api('GET', '/api/user/' + u); // verify exists
+    await api('POST', '/api/group/' + S.currentChat + '/member', { username: u });
+    const chat = S.chats[S.currentChat];
+    if (!chat.members.includes(u)) chat.members.push(u);
+    await openMembersModal();
+    toast('✅ ' + u + ' added');
+  } catch(e) { toast('⚠ ' + e.message, 3000, true); }
+}
+
+async function openMembersModal() {
+  const chat = S.chats[S.currentChat];
+  if (!chat) return;
+  const list = document.getElementById('mbr-list');
+  list.innerHTML = '';
+  for (const uname of (chat.members||[])) {
+    let display = uname, color = 0;
+    try { const u = await api('GET', '/api/user/' + uname); display = u.display; color = u.color; } catch {}
+    const isMe = uname === S.user.username;
+    list.innerHTML += `<div class="member-item">
+      <div class="av av${color}" style="width:32px;height:32px;font-size:12px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center">${display[0].toUpperCase()}</div>
+      <div><div style="font-size:13px;font-weight:600">${esc(display)}</div><div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)">@${esc(uname)}</div></div>
+      <div class="member-role">${isMe ? 'YOU' : (S.onlineUsers.has(uname) ? '● online' : '')}</div>
+    </div>`;
+  }
+  openModal('mbr-modal');
+}
+
+// ═══════════════════════
+//  ENC INFO
+// ═══════════════════════
+function openEncInfo() {
+  if (!S.currentChat) return;
+  const chat = S.chats[S.currentChat];
+  document.getElementById('enc-detail').innerHTML = `🔑 Session Key:<br><b>${chat.keyHex}</b><br><br>Fingerprint: <b>${chat.keyHex.slice(0,8).toUpperCase()} ${chat.keyHex.slice(8,16).toUpperCase()}</b>`;
+  openModal('enc-modal');
+}
+
+// ═══════════════════════
+//  PROFILE
+// ═══════════════════════
+function openProfile() {
+  const u = S.user;
+  const avEl = document.getElementById('pr-av');
+  avEl.textContent = u.display[0].toUpperCase();
+  avEl.className = 'av pr-av av' + u.color;
+  document.getElementById('pr-name').textContent = u.display;
+  document.getElementById('pr-handle').textContent = '@' + u.username;
+  const totalChats = Object.keys(S.chats).length;
+  const groups = Object.values(S.chats).filter(c => c.type==='group').length;
+  document.getElementById('pr-stats').innerHTML = `
+    <div class="stat"><div class="n">${totalChats}</div><div class="l">Chats</div></div>
+    <div class="stat"><div class="n">${groups}</div><div class="l">Groups</div></div>
+    <div class="stat"><div class="n">${S.onlineUsers.size}</div><div class="l">Online</div></div>`;
+  openModal('profile-modal');
+}
+
+// ═══════════════════════
+//  ONLINE STATUS
+// ═══════════════════════
+function updateOnlineDot() {
+  if (!S.currentChat) return;
+  const chat = S.chats[S.currentChat];
+  if (!chat || chat.type !== 'dm') return;
+  const peer = chat.user1 === S.user.username ? chat.user2 : chat.user1;
+  document.getElementById('ch-dot').style.display = S.onlineUsers.has(peer) ? 'block' : 'none';
+}
+
+// ═══════════════════════
+//  CLEAR CHAT
+// ═══════════════════════
+function clearChat() {
+  if (!S.currentChat) return;
+  if (!confirm('Clear messages locally? (Only clears on your screen)')) return;
+  const chat = S.chats[S.currentChat];
+  if (chat) { chat._msgs = []; chat.lastMsg = ''; }
+  renderMsgs(true);
+  renderSidebar();
+  toast('🗑️ Chat cleared locally');
+}
+
+// ═══════════════════════
+//  LIGHTBOX
+// ═══════════════════════
+function openLb(src) {
+  document.getElementById('lb-img').src = src;
+  document.getElementById('lb-dl').href = src;
+  document.getElementById('lb').classList.add('on');
+}
+function closeLb() { document.getElementById('lb').classList.remove('on'); }
+function dlFile(src, name) { const a = document.createElement('a'); a.href = src; a.download = name; a.click(); }
+
+// ═══════════════════════
+//  MODALS
+// ═══════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('on');
+  if (id === 'mbr-modal') openMembersModal();
+  if (id === 'profile-modal') openProfile();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('on'); }
+document.addEventListener('keydown', e => { if (e.key==='Escape') { document.querySelectorAll('.overlay.on').forEach(o=>o.classList.remove('on')); closeLb(); } });
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if (e.target===o) o.classList.remove('on'); }));
+
+// ═══════════════════════
+//  UTILS
+// ═══════════════════════
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+function fmtTime(ts) { const d = new Date(ts), h = d.getHours()%12||12, m = String(d.getMinutes()).padStart(2,'0'), ap = d.getHours()>=12?'PM':'AM'; return `${h}:${m} ${ap}`; }
+function fmtDay(ts) { const d = new Date(ts), n = new Date(), y = new Date(n); y.setDate(n.getDate()-1); if (d.toDateString()===n.toDateString()) return 'Today'; if (d.toDateString()===y.toDateString()) return 'Yesterday'; return d.toLocaleDateString('en-IN',{month:'short',day:'numeric',year:'numeric'}); }
+
+let _toastTimer;
+function toast(msg, dur=3000, isErr=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (isErr ? ' err-toast' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.className = '', dur);
+}
+
+// ═══════════════════════
+//  STARTUP
+// ═══════════════════════
+window.addEventListener('load', () => {
+  // Hide loading, show auth after short delay
+  setTimeout(() => {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('auth').classList.add('on');
+  }, 600);
+});
+
+window.addEventListener('beforeunload', () => {
+  if (S.ws) S.ws.close();
+});
+</script>
+</body>
+</html>
